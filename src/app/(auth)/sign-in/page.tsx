@@ -1,276 +1,147 @@
-'use client'
+"use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import Link from "next/link"
 import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { toast } from "sonner"
-import { useRouter } from "next/navigation"
-import { signInSchema } from "@/schemas/signInSchema"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Loader2 } from "lucide-react"
-import { useState } from "react"
+import type * as z from "zod"
 import { signIn } from "next-auth/react"
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
+import { signInSchema } from "@/schemas/signInSchema"
+import { useState } from "react"
+import { Loader2, LogIn, User, Lock } from "lucide-react"
 
-// CSS Styles
-const styles = `
-  .signin-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    background-color: #f3f4f6;
-    font-family: 'Inter', sans-serif;
-  }
-
-  .signin-card {
-    width: 100%;
-    max-width: 28rem;
-    padding: 2rem;
-    background: white;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    text-align: center;
-  }
-
-  .signin-title {
-    font-size: 2.25rem;
-    font-weight: 800;
-    color: #111827;
-    margin-bottom: 0.5rem;
-    line-height: 1;
-  }
-
-  .signin-subtitle {
-    font-size: 1rem;
-    color: #6b7280;
-    margin-bottom: 2rem;
-  }
-
-  .signin-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .form-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    text-align: left;
-  }
-
-  .form-label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #374151;
-  }
-
-  .form-input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    transition: border-color 0.2s;
-  }
-
-  .form-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-
-  .form-message {
-    font-size: 0.75rem;
-    color: #ef4444;
-  }
-
-  .forgot-password {
-    font-size: 0.875rem;
-    color: #3b82f6;
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-
-  .forgot-password:hover {
-    color: #2563eb;
-    text-decoration: underline;
-  }
-
-  .signin-button {
-    width: 100%;
-    padding: 0.75rem;
-    background-color: #3b82f6;
-    color: white;
-    border: none;
-    border-radius: 0.375rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .signin-button:hover {
-    background-color: #2563eb;
-  }
-
-  .signin-button:disabled {
-    background-color: #93c5fd;
-    cursor: not-allowed;
-  }
-
-  .signin-footer {
-    margin-top: 1rem;
-    font-size: 0.875rem;
-    color: #6b7280;
-  }
-
-  .signup-link {
-    color: #3b82f6;
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-
-  .signup-link:hover {
-    color: #2563eb;
-    text-decoration: underline;
-  }
-
-  .spinner {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-`
-
-export default function SignIn() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+export default function SignInForm() {
   const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<z.infer<typeof signInSchema>>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
-      identifier: '',
-      password: ''
-    }
+      identifier: "",
+      password: "",
+    },
   })
+
+  const { toast } = useToast()
 
   const onSubmit = async (data: z.infer<typeof signInSchema>) => {
     setIsSubmitting(true)
-    try {
-      const result = await signIn('credentials', {
-        redirect: false,
-        identifier: data.identifier,
-        password: data.password
-      })
 
-      if (result?.error) {
-        if (result.error === 'CredentialsSignin') {
-          toast.error("Incorrect username or password")
-        } else {
-          toast.error(result.error)
-        }
-        return
-      }
+    const result = await signIn("credentials", {
+      identifier: data.identifier,
+      password: data.password,
+      redirect: false,
+    })
 
-      if (result?.url) {
-        toast.success("Login successful")
-        router.replace('/dashboard')
+    if (result?.error) {
+      if (result.error === "CredentialsSignin") {
+        toast({
+          title: "Login Failed",
+          description: "Incorrect username or password",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
       }
-    } catch (error) {
-      console.error("Sign-in error:", error)
-      toast.error("An unexpected error occurred. Please try again.")
-    } finally {
-      setIsSubmitting(false)
     }
+
+    if (result?.url) {
+      router.replace("/dashboard")
+    }
+
+    setIsSubmitting(false)
   }
 
   return (
-    <>
-      <style>{styles}</style>
-      <div className="signin-container">
-        <div className="signin-card">
-          <h1 className="signin-title">Welcome Back</h1>
-          <p className="signin-subtitle">Sign in to continue your anonymous adventure</p>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4">
+            <LogIn className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-2">Welcome Back</h1>
+          <p className="text-purple-100 text-lg">Continue your secret conversations</p>
+        </div>
 
+        {/* Form Card */}
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 p-8">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="signin-form">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 name="identifier"
                 control={form.control}
                 render={({ field }) => (
-                  <FormItem className="form-item">
-                    <FormLabel className="form-label">Email or Username</FormLabel>
-                    <FormControl>
-                      <Input
-                        className="form-input"
-                        placeholder="email or username"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="form-message" />
+                  <FormItem>
+                    <FormLabel className="text-white font-medium flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Email or Username
+                    </FormLabel>
+                    <Input
+                      {...field}
+                      className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 focus:border-white/50"
+                      placeholder="Enter your email or username"
+                    />
+                    <FormMessage className="text-red-300" />
                   </FormItem>
                 )}
               />
+
               <FormField
                 name="password"
                 control={form.control}
                 render={({ field }) => (
-                  <FormItem className="form-item">
-                    <FormLabel className="form-label">Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        className="form-input"
-                        placeholder="password"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="form-message" />
+                  <FormItem>
+                    <FormLabel className="text-white font-medium flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      Password
+                    </FormLabel>
+                    <Input
+                      {...field}
+                      type="password"
+                      className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 focus:border-white/50"
+                      placeholder="Enter your password"
+                    />
+                    <FormMessage className="text-red-300" />
                   </FormItem>
                 )}
               />
-              <div style={{ textAlign: 'right' }}>
-                <Link href="/forgot-password" className="forgot-password">
-                  Forgot password?
-                </Link>
-              </div>
+
               <Button
                 type="submit"
-                className="signin-button"
+                className="w-full bg-white text-purple-600 hover:bg-white/90 font-semibold py-3 rounded-xl transition-all duration-200"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="spinner" style={{ height: '1rem', width: '1rem' }} />
-                    Signing in...
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Signing In...
                   </>
                 ) : (
-                  'Sign In'
+                  "Sign In"
                 )}
               </Button>
             </form>
           </Form>
 
-          <div className="signin-footer">
-            <p>
-              Don't have an account?{' '}
-              <Link href="/sign-up" className="signup-link">
+          <div className="text-center mt-6">
+            <p className="text-white/80">
+              Don't have an account?{" "}
+              <Link href="/sign-up" className="text-white font-semibold hover:underline">
                 Sign up
               </Link>
             </p>
           </div>
         </div>
       </div>
-    </>
+    </div>
   )
 }

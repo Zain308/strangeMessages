@@ -4,18 +4,24 @@ import type { Message } from "@/model/User"
 
 export async function POST(request: Request) {
   await dbConnect()
+
   try {
     const { username, content } = await request.json()
 
+    if (!username || !content) {
+      return Response.json({ success: false, message: "Username and content are required" }, { status: 400 })
+    }
+
+    // Find the user by username
     const user = await UserModel.findOne({ username }).exec()
 
     if (!user) {
-      return Response.json({ message: "User not found", success: false }, { status: 404 })
+      return Response.json({ success: false, message: "User not found" }, { status: 404 })
     }
 
-    // Check if the user is accepting messages
+    // Check if user is accepting messages
     if (!user.isAcceptingMessages) {
-      return Response.json({ message: "User is not accepting messages", success: false }, { status: 403 })
+      return Response.json({ success: false, message: "User is not accepting messages" }, { status: 403 })
     }
 
     const newMessage = { content, createdAt: new Date() }

@@ -1,377 +1,137 @@
-'use client'
+"use client"
+
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-
-import { CheckCircle2Icon, PopcornIcon, AlertCircleIcon, Trash2Icon } from "lucide-react"
+import { Trash2, Calendar, MessageCircle } from "lucide-react"
 import { useState } from "react"
+import type { Message } from "@/model/User"
+import axios from "axios"
+import { useToast } from "@/hooks/use-toast"
+import type { ApiResponse } from "@/types/ApiResponse"
 
-// Custom CSS Styles
-const styles = `
-  .message-card {
-    max-width: 42rem;
-    margin: 0 auto;
-    border-radius: 0.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
-  }
+type MessageCardProps = {
+  message: Message
+  onMessageDelete: (messageId: string) => void
+}
 
-  .message-card:hover {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
-  }
-
-  .card-header {
-    padding: 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-  }
-
-  .card-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #111827;
-  }
-
-  .card-description {
-    font-size: 0.875rem;
-    color: #6b7280;
-    margin-top: 0.5rem;
-  }
-
-  .card-content {
-    padding: 1.5rem;
-  }
-
-  .card-footer {
-    padding: 1rem 1.5rem;
-    border-top: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .alert-container {
-    margin: 1rem 0;
-  }
-
-  .alert {
-    padding: 1rem;
-    border-radius: 0.375rem;
-    display: flex;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .alert-success {
-    background-color: #f0fdf4;
-    border: 1px solid #bbf7d0;
-  }
-
-  .alert-info {
-    background-color: #f0f9ff;
-    border: 1px solid #bae6fd;
-  }
-
-  .alert-destructive {
-    background-color: #fef2f2;
-    border: 1px solid #fecaca;
-  }
-
-  .alert-icon {
-    flex-shrink: 0;
-    height: 1.25rem;
-    width: 1.25rem;
-    margin-top: 0.125rem;
-  }
-
-  .alert-icon-success {
-    color: #16a34a;
-  }
-
-  .alert-icon-info {
-    color: #0284c7;
-  }
-
-  .alert-icon-destructive {
-    color: #dc2626;
-  }
-
-  .alert-content {
-    flex: 1;
-  }
-
-  .alert-title {
-    font-weight: 600;
-    color: #111827;
-    margin-bottom: 0.25rem;
-  }
-
-  .alert-description {
-    font-size: 0.875rem;
-    color: #4b5563;
-  }
-
-  .alert-list {
-    margin-top: 0.5rem;
-    padding-left: 1.25rem;
-    list-style-type: disc;
-  }
-
-  .alert-list li {
-    margin-bottom: 0.25rem;
-  }
-
-  .delete-btn {
-    background: none;
-    border: none;
-    color: #ef4444;
-    cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 0.25rem;
-    transition: all 0.2s;
-  }
-
-  .delete-btn:hover {
-    background-color: #fee2e2;
-  }
-
-  .delete-dialog {
-    border-radius: 0.5rem;
-    max-width: 24rem;
-    padding: 1.5rem;
-    background-color: white;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  }
-
-  .delete-dialog-header {
-    margin-bottom: 1rem;
-  }
-
-  .delete-dialog-title {
-    font-weight: 600;
-    font-size: 1.125rem;
-    color: #111827;
-    margin-bottom: 0.5rem;
-  }
-
-  .delete-dialog-description {
-    font-size: 0.875rem;
-    color: #6b7280;
-  }
-
-  .delete-dialog-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    margin-top: 1rem;
-  }
-
-  .cancel-btn {
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
-    background-color: #f3f4f6;
-    color: #111827;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .cancel-btn:hover {
-    background-color: #e5e7eb;
-  }
-
-  .confirm-btn {
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
-    background-color: #ef4444;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .confirm-btn:hover {
-    background-color: #dc2626;
-  }
-
-  .confirm-btn:disabled {
-    background-color: #fca5a5;
-    cursor: not-allowed;
-  }
-
-  /* Dark mode styles */
-  @media (prefers-color-scheme: dark) {
-    .message-card {
-      background-color: #1f2937;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    }
-
-    .card-header {
-      border-bottom-color: #374151;
-    }
-
-    .card-title {
-      color: #f9fafb;
-    }
-
-    .card-description {
-      color: #9ca3af;
-    }
-
-    .card-footer {
-      border-top-color: #374151;
-    }
-
-    .alert-success {
-      background-color: #052e16;
-      border-color: #166534;
-    }
-
-    .alert-info {
-      background-color: #082f49;
-      border-color: #075985;
-    }
-
-    .alert-destructive {
-      background-color: #450a0a;
-      border-color: #991b1b;
-    }
-
-    .alert-title {
-      color: #f9fafb;
-    }
-
-    .alert-description {
-      color: #d1d5db;
-    }
-
-    .delete-dialog {
-      background-color: #1f2937;
-    }
-
-    .delete-dialog-title {
-      color: #f9fafb;
-    }
-
-    .delete-dialog-description {
-      color: #9ca3af;
-    }
-
-    .cancel-btn {
-      background-color: #374151;
-      color: #f9fafb;
-    }
-
-    .cancel-btn:hover {
-      background-color: #4b5563;
-    }
-  }
-`
-
-function MessageCard() {
+export default function MessageCard({ message, onMessageDelete }: MessageCardProps) {
+  const { toast } = useToast()
   const [showDeleteAlert, setShowDeleteAlert] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const handleDelete = () => {
+  const handleDeleteConfirm = async () => {
     setIsDeleting(true)
-    // Simulate API call
-    setTimeout(() => {
-      setIsDeleting(false)
+    try {
+      const response = await axios.delete<ApiResponse>(`/api/delete-message/${message._id}`)
+      toast({
+        title: "Message Deleted",
+        description: "The message has been successfully deleted.",
+      })
+      onMessageDelete(message._id as string)
       setShowDeleteAlert(false)
-      // Add your actual delete logic here
-      console.log("Message deleted")
-    }, 1500)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete message. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === "string" ? new Date(date) : date
+    return dateObj.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    })
   }
 
   return (
     <>
-      <style>{styles}</style>
-      <div className="message-card">
-        <div className="card-header">
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="card-title">Important Message</h2>
-              <p className="card-description">
-                This card contains different types of alert messages
-              </p>
-            </div>
-            <button
-              className="delete-btn"
-              onClick={() => setShowDeleteAlert(true)}
-            >
-              <Trash2Icon className="h-5 w-5" />
-            </button>
-          </div>
+      {/* Message Card */}
+      <Card className="group relative bg-white/80 backdrop-blur-sm border-2 border-gray-200/50 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:border-blue-300/50 overflow-hidden">
+        {/* Gradient accent */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
 
-          <div className="alert-container">
-            <div className="alert alert-success">
-              <CheckCircle2Icon className="alert-icon alert-icon-success" />
-              <div className="alert-content">
-                <h4 className="alert-title">Success! Your changes have been saved</h4>
-                <p className="alert-description">
-                  This is an alert with icon, title and description.
-                </p>
-              </div>
-            </div>
+        {/* Delete Button */}
+        <button
+          onClick={() => setShowDeleteAlert(true)}
+          className="absolute top-4 right-4 w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
+          title="Delete message"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
 
-            <div className="alert alert-info">
-              <PopcornIcon className="alert-icon alert-icon-info" />
-              <div className="alert-content">
-                <h4 className="alert-title">
-                  This Alert has a title and an icon. No description.
-                </h4>
-              </div>
+        <CardContent className="p-6">
+          {/* Message Icon */}
+          <div className="flex items-start space-x-3 mb-4">
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+              <MessageCircle className="w-5 h-5 text-white" />
             </div>
-
-            <div className="alert alert-destructive">
-              <AlertCircleIcon className="alert-icon alert-icon-destructive" />
-              <div className="alert-content">
-                <h4 className="alert-title">Unable to process your payment.</h4>
-                <div className="alert-description">
-                  <p>Please verify your billing information and try again.</p>
-                  <ul className="alert-list">
-                    <li>Check your card details</li>
-                    <li>Ensure sufficient funds</li>
-                    <li>Verify billing address</li>
-                  </ul>
-                </div>
-              </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-gray-900 text-base leading-relaxed font-medium break-words">{message.content}</p>
             </div>
           </div>
-        </div>
 
-        <div className="card-content">
-          <p>This is the main content of the message card.</p>
-        </div>
-
-        <div className="card-footer">
-          <Button variant="outline">Cancel</Button>
-          <Button className="ml-2">Save Changes</Button>
-        </div>
-      </div>
+          {/* Date */}
+          {message.createdAt && (
+            <div className="flex items-center text-gray-500 text-sm mt-4 pt-4 border-t border-gray-200">
+              <Calendar className="h-4 w-4 mr-2" />
+              {formatDate(message.createdAt)}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Delete Confirmation Dialog */}
       {showDeleteAlert && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="delete-dialog">
-            <div className="delete-dialog-header">
-              <h3 className="delete-dialog-title">Delete Message</h3>
-              <p className="delete-dialog-description">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="h-8 w-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Message</h3>
+              <p className="text-gray-600">
                 Are you sure you want to delete this message? This action cannot be undone.
               </p>
             </div>
-            <div className="delete-dialog-footer">
-              <button
-                className="cancel-btn"
+
+            <div className="bg-gray-50 rounded-xl p-4 mb-6">
+              <p className="text-sm text-gray-700 italic line-clamp-3">"{message.content}"</p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
                 onClick={() => setShowDeleteAlert(false)}
                 disabled={isDeleting}
+                variant="outline"
+                className="flex-1 border-2 border-gray-200 hover:bg-gray-50"
               >
                 Cancel
-              </button>
-              <button
-                className="confirm-btn"
-                onClick={handleDelete}
+              </Button>
+              <Button
+                onClick={handleDeleteConfirm}
                 disabled={isDeleting}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-2"
               >
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </button>
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>
@@ -379,5 +139,3 @@ function MessageCard() {
     </>
   )
 }
-
-export default MessageCard

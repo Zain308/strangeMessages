@@ -1,20 +1,30 @@
-'use client';
+import type React from "react"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import AuthProvider from "@/context/AuthProvider"
+import { Toaster } from "@/components/ui/toaster"
 
-import { SessionProvider } from 'next-auth/react';
-import { Toaster } from "@/components/ui/sonner"
-import Navbar from '@/components/Navbar';
+const inter = Inter({ subsets: ["latin"] })
 
+export const metadata: Metadata = {
+  title: "True Feedback",
+  description: "Real feedback from real people.",
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+interface RootLayoutProps {
+  children: React.ReactNode
+}
+
+export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
-      <body>
-        <SessionProvider>
-          <Navbar />
+      <AuthProvider>
+        <body className={inter.className}>
           {children}
           <Toaster />
-        </SessionProvider>
-      </body>
+        </body>
+      </AuthProvider>
     </html>
-  );
+  )
 }
